@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Package, Store, BarChart2, ClipboardCheck, ArrowLeftRight, LogOut, PackageCheck } from 'lucide-react'
+import { Package, Store, BarChart2, ClipboardCheck, ArrowLeftRight, LogOut, PackageCheck, PackagePlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/marketplace', label: 'Marketplace', icon: Store },
   { to: '/separacao-pedidos', label: 'Separação', icon: PackageCheck },
   { to: '/pedidos', label: 'Pedidos', icon: BarChart2 },
+  { to: '/entrada-estoque', label: 'Entrada', icon: PackagePlus },
   { to: '/conferencia-estoque', label: 'Conferência', icon: ClipboardCheck },
   { to: '/movimentacoes-estoque', label: 'Movimentações', icon: ArrowLeftRight },
 ]

@@ -8,27 +8,23 @@ interface MovimentacaoTableProps {
   movimentacoes: EstoqueMovimentacao[]
   isLoading: boolean
   busca: string
-  tipoFiltro: string
 }
 
-const TIPO_CONFIG = {
-  entrada: { label: 'Entrada', class: 'bg-green-100 text-green-800 hover:bg-green-100' },
-  saida:   { label: 'Saída',   class: 'bg-red-100 text-red-800 hover:bg-red-100' },
-  ajuste:  { label: 'Ajuste',  class: 'bg-amber-100 text-amber-800 hover:bg-amber-100' },
-}
-
-export function MovimentacaoTable({ movimentacoes, isLoading, busca, tipoFiltro }: MovimentacaoTableProps) {
+export function MovimentacaoTable({ movimentacoes, isLoading, busca }: MovimentacaoTableProps) {
   const filtradas = movimentacoes.filter(m => {
-    const matchBusca = !busca || m.sku.toLowerCase().includes(busca.toLowerCase()) ||
+    return (
+      !busca ||
+      m.sku.toLowerCase().includes(busca.toLowerCase()) ||
       m.produto_nome.toLowerCase().includes(busca.toLowerCase())
-    const matchTipo = tipoFiltro === 'todos' || m.tipo === tipoFiltro
-    return matchBusca && matchTipo
+    )
   })
 
   if (isLoading) {
     return (
       <div className="space-y-2">
-        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
       </div>
     )
   }
@@ -38,13 +34,13 @@ export function MovimentacaoTable({ movimentacoes, isLoading, busca, tipoFiltro 
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Data/Hora</TableHead>
+            <TableHead>Data</TableHead>
             <TableHead>SKU</TableHead>
             <TableHead>Produto</TableHead>
+            <TableHead>Cor</TableHead>
+            <TableHead>Tamanho</TableHead>
+            <TableHead className="text-right">Quantidade</TableHead>
             <TableHead>Tipo</TableHead>
-            <TableHead className="text-right">Qtd</TableHead>
-            <TableHead>Anterior → Novo</TableHead>
-            <TableHead>Motivo</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -55,32 +51,21 @@ export function MovimentacaoTable({ movimentacoes, isLoading, busca, tipoFiltro 
               </TableCell>
             </TableRow>
           )}
-          {filtradas.map(m => {
-            const cfg = TIPO_CONFIG[m.tipo] ?? TIPO_CONFIG.ajuste
-            const sinal = m.tipo === 'entrada' ? '+' : m.tipo === 'saida' ? '-' : '±'
-            return (
-              <TableRow key={m.id}>
-                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{dt(m.criado_em)}</TableCell>
-                <TableCell className="font-mono text-xs">{m.sku}</TableCell>
-                <TableCell className="text-sm">
-                  <span className="font-medium">{m.produto_nome}</span>
-                  {(m.cor || m.tamanho) && (
-                    <span className="text-muted-foreground"> · {[m.cor, m.tamanho].filter(Boolean).join(' ')}</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge className={cfg.class}>{cfg.label}</Badge>
-                </TableCell>
-                <TableCell className={`text-right font-medium ${m.tipo === 'entrada' ? 'text-green-600' : m.tipo === 'saida' ? 'text-destructive' : 'text-amber-600'}`}>
-                  {sinal}{m.quantidade}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                  {m.quantidade_anterior} → {m.quantidade_nova}
-                </TableCell>
-                <TableCell className="text-sm max-w-48 truncate">{m.motivo}</TableCell>
-              </TableRow>
-            )
-          })}
+          {filtradas.map(m => (
+            <TableRow key={m.id}>
+              <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                {dt(m.criado_em)}
+              </TableCell>
+              <TableCell className="font-mono text-xs">{m.sku}</TableCell>
+              <TableCell className="text-sm font-medium">{m.produto_nome}</TableCell>
+              <TableCell className="text-sm text-muted-foreground">{m.cor ?? '—'}</TableCell>
+              <TableCell className="text-sm">{m.tamanho ?? '—'}</TableCell>
+              <TableCell className="text-right font-medium text-green-600">+{m.quantidade}</TableCell>
+              <TableCell>
+                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Entrada</Badge>
+              </TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </div>

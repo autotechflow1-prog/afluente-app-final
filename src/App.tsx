@@ -10,6 +10,7 @@ import { MarketplacePage } from '@/features/marketplace/MarketplacePage'
 import { PedidosPage } from '@/features/pedidos/PedidosPage'
 import { ConferenciaEstoquePage } from '@/features/estoque/ConferenciaEstoquePage'
 import { MovimentacoesEstoquePage } from '@/features/estoque/MovimentacoesEstoquePage'
+import { EntradaEstoquePage } from '@/features/estoque/EntradaEstoquePage'
 import { SepacaoPedidosPage } from '@/features/separacao/SepacaoPedidosPage'
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="/marketplace" element={<MarketplacePage />} />
             <Route path="/pedidos" element={<PedidosPage />} />
             <Route path="/separacao-pedidos" element={<SepacaoPedidosPage />} />
+            <Route path="/entrada-estoque" element={<EntradaEstoquePage />} />
             <Route path="/conferencia-estoque" element={<ConferenciaEstoquePage />} />
             <Route path="/movimentacoes-estoque" element={<MovimentacoesEstoquePage />} />
           </Route>

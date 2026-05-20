@@ -5,6 +5,63 @@ import type { GrupoProduto } from '@/types'
 
 const ORDEM_TAMANHOS = ['P', 'M', 'G', 'GG', 'XG']
 
+export interface VarSimples {
+  codigo: string
+  tamanho: string
+  saldo: number
+}
+
+export interface GrupoSimples {
+  chave: string
+  nome: string
+  cor: string | null
+  imagem: string | null
+  variacoes: VarSimples[]
+}
+
+export function useGruposSimples() {
+  return useQuery({
+    queryKey: ['grupos-simples'],
+    queryFn: async (): Promise<GrupoSimples[]> => {
+      const { data, error } = await supabase
+        .from('bling_products')
+        .select('produto_pai_bling_id, codigo, nome, cor, tamanho, estoque_saldo, imagem_principal_url')
+        .eq('ativo_frontend', true)
+        .order('nome')
+      if (error) throw error
+
+      const grupos: Record<string, GrupoSimples> = {}
+      for (const item of data ?? []) {
+        const chave = String(item.produto_pai_bling_id ?? item.codigo)
+        if (!grupos[chave]) {
+          grupos[chave] = {
+            chave,
+            nome: item.nome,
+            cor: item.cor ?? null,
+            imagem: item.imagem_principal_url ?? null,
+            variacoes: [],
+          }
+        }
+        grupos[chave].variacoes.push({
+          codigo: item.codigo,
+          tamanho: item.tamanho ?? '—',
+          saldo: Number(item.estoque_saldo ?? 0),
+        })
+      }
+
+      Object.values(grupos).forEach(g => {
+        g.variacoes.sort((a, b) => {
+          const ia = ORDEM_TAMANHOS.indexOf(a.tamanho)
+          const ib = ORDEM_TAMANHOS.indexOf(b.tamanho)
+          return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+        })
+      })
+
+      return Object.values(grupos)
+    },
+  })
+}
+
 export function useGruposProdutos() {
   return useQuery({
     queryKey: ['grupos-produtos'],

@@ -10,8 +10,9 @@ export function useMovimentacoes() {
       const { data, error } = await supabase
         .from('estoque_movimentacoes')
         .select('*')
+        .eq('motivo', 'entrada_manual')
         .order('criado_em', { ascending: false })
-        .limit(200)
+        .limit(500)
       if (error) throw error
       return (data ?? []) as EstoqueMovimentacao[]
     },
