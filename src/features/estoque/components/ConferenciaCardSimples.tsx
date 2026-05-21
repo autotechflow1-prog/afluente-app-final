@@ -23,8 +23,9 @@ export function ConferenciaCardSimples({ grupo, contagens, onContagem }: Props) 
           )}
           <div className="min-w-0">
             <p className="text-sm font-medium leading-tight line-clamp-2">{grupo.nome}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 font-mono">{grupo.chave}</p>
             {grupo.cor && (
-              <p className="text-xs text-muted-foreground mt-0.5">{grupo.cor}</p>
+              <p className="text-xs text-muted-foreground">{grupo.cor}</p>
             )}
           </div>
         </div>
@@ -32,16 +33,21 @@ export function ConferenciaCardSimples({ grupo, contagens, onContagem }: Props) 
         <div className="flex flex-wrap gap-3">
           {grupo.variacoes.map(v => {
             const count = contagens[v.codigo]
-            const divergencia = count !== undefined ? count - v.saldo : 0
+            const divergencia = count !== undefined ? count - v.estoqueReal : 0
             const temDiv = count !== undefined && divergencia !== 0
             return (
               <div key={v.codigo} className="flex flex-col items-center gap-1">
                 <span className="text-[11px] font-medium text-muted-foreground uppercase">{v.tamanho}</span>
-                <span className="text-xs font-bold">{v.saldo}</span>
+                <span className="text-xs font-bold">{v.estoqueReal}</span>
+                {v.reservado > 0 && (
+                  <span className="text-[10px] text-muted-foreground leading-tight">
+                    Bling: {v.saldo} | Res: {v.reservado}
+                  </span>
+                )}
                 <div className="flex items-center gap-0.5">
                   <button
                     type="button"
-                    onClick={() => onContagem(v.codigo, Math.max(0, (count ?? v.saldo) - 1))}
+                    onClick={() => onContagem(v.codigo, Math.max(0, (count ?? v.estoqueReal) - 1))}
                     className="w-6 h-7 rounded-l border bg-muted hover:bg-accent flex items-center justify-center text-sm font-bold leading-none"
                   >
                     −
@@ -50,17 +56,17 @@ export function ConferenciaCardSimples({ grupo, contagens, onContagem }: Props) 
                     type="number"
                     min={0}
                     value={count ?? ''}
-                    placeholder={String(v.saldo)}
+                    placeholder={String(v.estoqueReal)}
                     onChange={e => {
                       const n = parseInt(e.target.value, 10)
                       if (!isNaN(n) && n >= 0) onContagem(v.codigo, n)
-                      else if (e.target.value === '') onContagem(v.codigo, v.saldo)
+                      else if (e.target.value === '') onContagem(v.codigo, v.estoqueReal)
                     }}
                     className="w-14 h-7 border-y text-center text-sm bg-background outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <button
                     type="button"
-                    onClick={() => onContagem(v.codigo, (count ?? v.saldo) + 1)}
+                    onClick={() => onContagem(v.codigo, (count ?? v.estoqueReal) + 1)}
                     className="w-6 h-7 rounded-r border bg-muted hover:bg-accent flex items-center justify-center text-sm font-bold leading-none"
                   >
                     +

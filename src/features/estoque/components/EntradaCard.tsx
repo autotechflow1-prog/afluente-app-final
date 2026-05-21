@@ -50,8 +50,9 @@ export function EntradaCard({ grupo }: EntradaCardProps) {
           )}
           <div className="min-w-0">
             <p className="text-sm font-medium leading-tight line-clamp-2">{grupo.nome}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 font-mono">{grupo.chave}</p>
             {grupo.cor && (
-              <p className="text-xs text-muted-foreground mt-0.5">{grupo.cor}</p>
+              <p className="text-xs text-muted-foreground">{grupo.cor}</p>
             )}
           </div>
         </div>

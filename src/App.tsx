@@ -12,6 +12,7 @@ import { ConferenciaEstoquePage } from '@/features/estoque/ConferenciaEstoquePag
 import { MovimentacoesEstoquePage } from '@/features/estoque/MovimentacoesEstoquePage'
 import { EntradaEstoquePage } from '@/features/estoque/EntradaEstoquePage'
 import { SepacaoPedidosPage } from '@/features/separacao/SepacaoPedidosPage'
+import { PlanejamentoProducaoPage } from '@/features/producao/PlanejamentoProducaoPage'
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="/entrada-estoque" element={<EntradaEstoquePage />} />
             <Route path="/conferencia-estoque" element={<ConferenciaEstoquePage />} />
             <Route path="/movimentacoes-estoque" element={<MovimentacoesEstoquePage />} />
+            <Route path="/planejamento-producao" element={<PlanejamentoProducaoPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

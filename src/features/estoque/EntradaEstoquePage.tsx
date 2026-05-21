@@ -5,16 +5,24 @@ import { cn } from '@/lib/utils'
 import { EntradaCard } from './components/EntradaCard'
 import { useProdutosEntrada } from './hooks/useEntradaEstoque'
 
-const CATEGORIAS = ['Todos', 'Masculina', 'Feminina', 'Infantil', 'Acessórios']
+const TIPO_MAP: Record<string, string | null> = {
+  'Todos': null,
+  'Masculina': 'MLM',
+  'Feminina': 'MLF',
+  'Infantil': 'MLI',
+  'Acessórios': 'BON',
+}
+const FILTROS = Object.keys(TIPO_MAP)
 
 export function EntradaEstoquePage() {
   const { data: grupos = [], isLoading } = useProdutosEntrada()
-  const [categoria, setCategoria] = useState('Todos')
+  const [tipo, setTipo] = useState('Todos')
 
   const gruposFiltrados = useMemo(() => {
-    if (categoria === 'Todos') return grupos
-    return grupos.filter(g => g.categoria === categoria)
-  }, [grupos, categoria])
+    const prefix = TIPO_MAP[tipo]
+    if (!prefix) return grupos
+    return grupos.filter(g => g.chave.startsWith(prefix))
+  }, [grupos, tipo])
 
   return (
     <div className="space-y-4">
@@ -24,18 +32,18 @@ export function EntradaEstoquePage() {
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {CATEGORIAS.map(cat => (
+        {FILTROS.map(f => (
           <Button
-            key={cat}
+            key={f}
             size="sm"
             variant="outline"
             className={cn(
-              categoria === cat &&
+              tipo === f &&
                 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
             )}
-            onClick={() => setCategoria(cat)}
+            onClick={() => setTipo(f)}
           >
-            {cat}
+            {f}
           </Button>
         ))}
       </div>

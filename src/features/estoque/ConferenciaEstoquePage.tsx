@@ -12,7 +12,7 @@ import { FileText, X } from 'lucide-react'
 import { useGruposSimples } from './hooks/useConferenciaEstoque'
 import { ConferenciaCardSimples } from './components/ConferenciaCardSimples'
 
-const ORDEM_TAMANHOS = ['P', 'M', 'G', 'GG', 'XG']
+const ORDEM_TAMANHOS = ['P', 'M', 'G', 'GG', 'XG', '04', '06', '08', '10', '12', '14']
 
 interface TamanhoResultado {
   codigo: string
@@ -44,7 +44,9 @@ export function ConferenciaEstoquePage() {
   const [resultados, setResultados] = useState<Resultados | null>(null)
 
   // Modo 1 — todos os produtos
-  const { data: todos = [], isLoading } = useGruposSimples()
+  const { data: gruposData, isLoading } = useGruposSimples()
+  const todos = gruposData?.grupos ?? []
+  const totalAbertos = gruposData?.totalPedidosAbertos ?? 0
   const [contagens, setContagens] = useState<Record<string, number>>({})
   const [busca, setBusca] = useState('')
   const [corFiltro, setCorFiltro] = useState('todas')
@@ -154,9 +156,10 @@ export function ConferenciaEstoquePage() {
       // Passo 3b: TODOS os tamanhos desses grupos
       const { data: produtos, error: errProd } = await supabase
         .from('bling_products')
-        .select('produto_pai_bling_id, codigo, nome, cor, tamanho, estoque_saldo, imagem_principal_url')
+        .select('codigo, nome, cor, tamanho, estoque_saldo, imagem_principal_url')
         .in('produto_pai_bling_id', paisIds)
         .eq('ativo_frontend', true)
+        .order('codigo')
       if (errProd) throw errProd
 
       // Mapa NF: pedido_id → numero_nf, depois sku → Set<numero_nf>
@@ -173,36 +176,29 @@ export function ConferenciaEstoquePage() {
         }
       }
 
-      // Agrupar por produto_pai_bling_id com deduplicação por tamanho
-      const gruposRaw: Record<string, typeof produtos> = {}
-      for (const p of produtos ?? []) {
-        const chave = String(p.produto_pai_bling_id ?? p.codigo)
-        if (!gruposRaw[chave]) gruposRaw[chave] = []
-        gruposRaw[chave].push(p)
-      }
-
+      // Agrupar por primeiros 14 chars do SKU (produto até a cor)
       const grupos: Record<string, GrupoResultado> = {}
-      for (const [chave, prods] of Object.entries(gruposRaw)) {
-        const primeiro = prods[0]
-        const tamanhosDedupados = Array.from(
-          new Map(prods.map(p => [p.tamanho ?? '—', p])).values()
-        )
-        grupos[chave] = {
-          chave,
-          nome: primeiro.nome,
-          cor: primeiro.cor ?? null,
-          imagem: primeiro.imagem_principal_url ?? null,
-          skuBase: '',
-          tamanhos: tamanhosDedupados.map(p => ({
-            codigo: p.codigo,
-            tamanho: p.tamanho ?? '—',
-            saldo: Number(p.estoque_saldo ?? 0),
-          })),
-          countNFs: 0,
+      for (const p of produtos ?? []) {
+        const chave = p.codigo.substring(0, 14)
+        if (!grupos[chave]) {
+          grupos[chave] = {
+            chave,
+            nome: p.nome,
+            cor: p.cor ?? null,
+            imagem: p.imagem_principal_url ?? null,
+            skuBase: chave,
+            tamanhos: [],
+            countNFs: 0,
+          }
         }
+        grupos[chave].tamanhos.push({
+          codigo: p.codigo,
+          tamanho: p.tamanho ?? '—',
+          saldo: Number(p.estoque_saldo ?? 0),
+        })
       }
 
-      // Ordenar tamanhos, setar skuBase e calcular NFs únicas por grupo
+      // Ordenar tamanhos e calcular NFs únicas por grupo
       for (const g of Object.values(grupos)) {
         g.tamanhos.sort((a, b) => {
           const ia = ORDEM_TAMANHOS.indexOf(a.tamanho)
@@ -215,7 +211,6 @@ export function ConferenciaEstoquePage() {
           if (!isNaN(na) && !isNaN(nb)) return na - nb
           return a.tamanho.localeCompare(b.tamanho)
         })
-        g.skuBase = g.tamanhos[0]?.codigo ?? ''
         const nfSet = new Set<string>()
         for (const t of g.tamanhos) {
           for (const nf of skuToNFs[t.codigo] ?? []) nfSet.add(nf)
@@ -224,7 +219,9 @@ export function ConferenciaEstoquePage() {
       }
 
       setResultados({
-        grupos: Object.values(grupos),
+        grupos: Object.entries(grupos)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([, g]) => g),
         totalNFs: pedidosComNF.length,
       })
     } catch {
@@ -242,6 +239,13 @@ export function ConferenciaEstoquePage() {
         {!modoFiltro && (
           <p className="text-sm text-muted-foreground">{todos.length} produtos</p>
         )}
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        <Badge variant="secondary" className="gap-1.5">
+          <span className="font-bold">{totalAbertos}</span>
+          pedido{totalAbertos !== 1 ? 's' : ''} em aberto / aguardando envio
+        </Badge>
       </div>
 
       {/* Filtro de período */}
@@ -362,7 +366,6 @@ export function ConferenciaEstoquePage() {
                   {resultados.grupos.map(g => (
                     <Card key={g.chave}>
                       <CardContent className="pt-4 pb-4 space-y-3">
-                        {/* Cabeçalho */}
                         <div className="flex gap-3 justify-between items-start">
                           <div className="flex gap-3 min-w-0">
                             {g.imagem ? (
@@ -392,7 +395,6 @@ export function ConferenciaEstoquePage() {
                           )}
                         </div>
 
-                        {/* Tamanhos */}
                         <div className="flex flex-wrap gap-3">
                           {g.tamanhos.map(t => (
                             <div key={t.codigo} className="flex flex-col items-center gap-0.5">

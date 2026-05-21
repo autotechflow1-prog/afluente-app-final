@@ -1,7 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
-const ORDEM_TAMANHOS = ['P', 'M', 'G', 'GG', 'XG']
+const TAMANHO_MAP: Record<string, string> = {
+  '01': 'P',
+  '02': 'M',
+  '03': 'G',
+  '04': 'GG',
+  '05': 'XG',
+  '09': '04',
+  '10': '06',
+  '11': '08',
+  '12': '10',
+  '13': '12',
+  '14': '14',
+}
+
+const ORDEM_TAMANHOS = ['P', 'M', 'G', 'GG', 'XG', '04', '06', '08', '10', '12', '14']
+
+const getGrupoKey = (sku: string) => sku?.substring(0, 14) ?? ''
+const getTamanho = (sku: string) => TAMANHO_MAP[sku.slice(-2)] ?? sku.slice(-2)
 
 export interface VariacaoEntrada {
   codigo: string
@@ -13,7 +30,6 @@ export interface GrupoEntrada {
   nome: string
   cor: string | null
   imagem: string | null
-  categoria: string | null
   variacoes: VariacaoEntrada[]
 }
 
@@ -23,27 +39,26 @@ export function useProdutosEntrada() {
     queryFn: async (): Promise<GrupoEntrada[]> => {
       const { data, error } = await supabase
         .from('bling_products')
-        .select('produto_pai_bling_id, codigo, nome, cor, tamanho, categoria_nome, imagem_principal_url')
+        .select('codigo, nome, cor, imagem_principal_url')
         .eq('ativo_frontend', true)
-        .order('nome')
+        .order('codigo')
       if (error) throw error
 
       const grupos: Record<string, GrupoEntrada> = {}
       for (const item of data ?? []) {
-        const chave = String(item.produto_pai_bling_id ?? item.codigo)
+        const chave = getGrupoKey(item.codigo)
         if (!grupos[chave]) {
           grupos[chave] = {
             chave,
             nome: item.nome,
             cor: item.cor ?? null,
             imagem: item.imagem_principal_url ?? null,
-            categoria: item.categoria_nome ?? null,
             variacoes: [],
           }
         }
         grupos[chave].variacoes.push({
           codigo: item.codigo,
-          tamanho: item.tamanho ?? '—',
+          tamanho: getTamanho(item.codigo),
         })
       }
 
@@ -55,7 +70,9 @@ export function useProdutosEntrada() {
         })
       })
 
-      return Object.values(grupos)
+      return Object.entries(grupos)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([, g]) => g)
     },
   })
 }

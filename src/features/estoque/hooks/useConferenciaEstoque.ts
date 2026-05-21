@@ -3,12 +3,31 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import type { GrupoProduto } from '@/types'
 
-const ORDEM_TAMANHOS = ['P', 'M', 'G', 'GG', 'XG']
+const TAMANHO_MAP: Record<string, string> = {
+  '01': 'P',
+  '02': 'M',
+  '03': 'G',
+  '04': 'GG',
+  '05': 'XG',
+  '09': '04',
+  '10': '06',
+  '11': '08',
+  '12': '10',
+  '13': '12',
+  '14': '14',
+}
+
+const ORDEM_TAMANHOS = ['P', 'M', 'G', 'GG', 'XG', '04', '06', '08', '10', '12', '14']
+
+const getGrupoKey = (sku: string) => sku?.substring(0, 14) ?? ''
+const getTamanho = (sku: string) => TAMANHO_MAP[sku.slice(-2)] ?? sku.slice(-2)
 
 export interface VarSimples {
   codigo: string
   tamanho: string
   saldo: number
+  reservado: number
+  estoqueReal: number
 }
 
 export interface GrupoSimples {
@@ -19,20 +38,46 @@ export interface GrupoSimples {
   variacoes: VarSimples[]
 }
 
+export interface GruposSimples {
+  grupos: GrupoSimples[]
+  totalPedidosAbertos: number
+}
+
 export function useGruposSimples() {
   return useQuery({
     queryKey: ['grupos-simples'],
-    queryFn: async (): Promise<GrupoSimples[]> => {
-      const { data, error } = await supabase
-        .from('bling_products')
-        .select('produto_pai_bling_id, codigo, nome, cor, tamanho, estoque_saldo, imagem_principal_url')
-        .eq('ativo_frontend', true)
-        .order('nome')
-      if (error) throw error
+    queryFn: async (): Promise<GruposSimples> => {
+      const [produtosResult, pedidosResult] = await Promise.all([
+        supabase
+          .from('bling_products')
+          .select('codigo, nome, cor, estoque_saldo, imagem_principal_url')
+          .eq('ativo_frontend', true)
+          .order('codigo'),
+        supabase
+          .from('bling_pedidos')
+          .select('bling_id')
+          .in('situacao_id', [6, 15, 21]),
+      ])
+      if (produtosResult.error) throw produtosResult.error
+      if (pedidosResult.error) throw pedidosResult.error
+
+      const blingIds = (pedidosResult.data ?? []).map(p => p.bling_id).filter((id): id is number => id != null)
+
+      const reservasPorSku: Record<string, number> = {}
+      if (blingIds.length > 0) {
+        const { data: itensReservados, error: errItens } = await supabase
+          .from('bling_pedido_itens')
+          .select('item_codigo, quantidade')
+          .in('pedido_bling_id', blingIds)
+        if (errItens) throw errItens
+        for (const item of itensReservados ?? []) {
+          reservasPorSku[item.item_codigo] = (reservasPorSku[item.item_codigo] ?? 0) + Number(item.quantidade)
+        }
+      }
 
       const grupos: Record<string, GrupoSimples> = {}
-      for (const item of data ?? []) {
-        const chave = String(item.produto_pai_bling_id ?? item.codigo)
+      for (const item of produtosResult.data ?? []) {
+        const chave = getGrupoKey(item.codigo)
         if (!grupos[chave]) {
           grupos[chave] = {
             chave,
@@ -42,10 +87,14 @@ export function useGruposSimples() {
             variacoes: [],
           }
         }
+        const saldo = Number(item.estoque_saldo ?? 0)
+        const reservado = reservasPorSku[item.codigo] ?? 0
         grupos[chave].variacoes.push({
           codigo: item.codigo,
-          tamanho: item.tamanho ?? '—',
-          saldo: Number(item.estoque_saldo ?? 0),
+          tamanho: getTamanho(item.codigo),
+          saldo,
+          reservado,
+          estoqueReal: saldo + reservado,
         })
       }
 
@@ -57,7 +106,12 @@ export function useGruposSimples() {
         })
       })
 
-      return Object.values(grupos)
+      return {
+        grupos: Object.entries(grupos)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([, g]) => g),
+        totalPedidosAbertos: blingIds.length,
+      }
     },
   })
 }
@@ -70,7 +124,7 @@ export function useGruposProdutos() {
         .from('bling_products')
         .select('codigo, nome, cor, tamanho, estoque_saldo, imagem_principal_url')
         .eq('ativo_frontend', true)
-        .order('nome')
+        .order('codigo')
       if (error) throw error
 
       // Buscar reservas dos pedidos em aberto (6) e ag. envio (21)
@@ -95,7 +149,7 @@ export function useGruposProdutos() {
 
       const grupos: Record<string, GrupoProduto> = {}
       for (const item of data ?? []) {
-        const chave = item.codigo.slice(0, 14)
+        const chave = getGrupoKey(item.codigo)
         if (!grupos[chave]) {
           grupos[chave] = {
             chave,
@@ -109,7 +163,7 @@ export function useGruposProdutos() {
         const reservado = reservasPorSku[item.codigo] ?? 0
         grupos[chave].variacoes.push({
           sku: item.codigo,
-          tamanho: item.tamanho ?? '—',
+          tamanho: getTamanho(item.codigo),
           estoque_bling,
           reservado,
           estoque_real: estoque_bling + reservado,
@@ -125,7 +179,9 @@ export function useGruposProdutos() {
         })
       })
 
-      return Object.values(grupos)
+      return Object.entries(grupos)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([, g]) => g)
     },
   })
 }
